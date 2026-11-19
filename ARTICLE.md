@@ -123,3 +123,7 @@ SanLav answered 32/32 tasks in Rounds 3–6 with that design, and Round 7 is now
 - zkVerify docs — Kurier: <https://docs.zkverify.io/overview/getting-started/kurier>
 - zkVerifyJS reference: <https://docs.zkverify.io/overview/zkverifyjs>
 - Circuit probe (our own work): 12 prove/verify assignments over the published `gatekeeper.wasm` / `gatekeeper_final.zkey` (snarkjs 0.7.5); input names recovered via the wasm `getInputSignalSize` oracle; Poseidon digest confirmed with circomlibjs.
+
+---
+
+*Written for the zkVerify Agent Games Creator Track — #AgentGames @ZKVProtocol*
