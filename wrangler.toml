@@ -1,0 +1,25 @@
+# wrangler.toml — SanLav Proof Gatekeeper (zkVerify Agent Games)
+#
+# Deploy (on your own machine, with your own Cloudflare account):
+#   npm install
+#   npm run build-assets        # embeds the circuit wasm+zkey (one-time)
+#   npx wrangler kv namespace create SEEN
+#       -> paste the returned id into the [[kv_namespaces]] block below
+#   npx wrangler secret put AGENT_GAMES_HMAC_SECRET   # paste the agent HMAC secret
+#   npx wrangler deploy
+#
+# NO SECRETS in this file. See DEPLOY.md for the full step-by-step.
+
+name = "sanlav-gatekeeper"
+main = "src/index.js"
+compatibility_date = "2026-11-14"
+
+# snarkjs needs Node APIs (Buffer, node:crypto) inside the Worker.
+compatibility_flags = ["nodejs_compat"]
+
+# Seen-set for PROOF_REUSED detection (persists across rounds).
+# Create with: npx wrangler kv namespace create SEEN
+# then replace the placeholder id below with the real one.
+[[kv_namespaces]]
+binding = "SEEN"
+id = "a20925d79a364af3bc0e0f6f629bbd96"

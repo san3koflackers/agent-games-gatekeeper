@@ -1,0 +1,14 @@
+--- a/src/threadman_thread.js
++++ b/src/threadman_thread.js
+@@ -28,8 +28,9 @@
+     }
+ 
+     async function init(data) {
+-        const code = new Uint8Array(data.code);
+-        const wasmModule = await WebAssembly.compile(code);
++        // Workers patch: accept a pre-compiled Module as well as raw bytes.
++        const code = data.code instanceof WebAssembly.Module ? data.code : new Uint8Array(data.code);
++        const wasmModule = code instanceof WebAssembly.Module ? code : await WebAssembly.compile(code);
+         memory = new WebAssembly.Memory({initial:data.init, maximum: MAXMEM});
+ 
+         instance = await WebAssembly.instantiate(wasmModule, {

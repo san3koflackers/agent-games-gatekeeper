@@ -1,0 +1,35 @@
+--- a/src/threadman.js
++++ b/src/threadman.js
+@@ -62,7 +62,9 @@
+     tm.u8 = new Uint8Array(tm.memory.buffer);
+     tm.u32 = new Uint32Array(tm.memory.buffer);
+ 
+-    const wasmModule = await WebAssembly.compile(wasm.code);
++    // Workers patch: accept a pre-compiled Module (static wasm import) so no
++    // runtime WebAssembly.compile is needed (banned in Cloudflare Workers).
++    const wasmModule = wasm.code instanceof WebAssembly.Module ? wasm.code : await WebAssembly.compile(wasm.code);
+ 
+     tm.instance = await WebAssembly.instantiate(wasmModule, {
+         env: {
+@@ -73,6 +75,12 @@
+     if(process.browser && !globalThis?.Worker) {
+         singleThread = true;
+     }
++
++    // Workers patch: no Web Worker API in Cloudflare Workers — force the
++    // in-process single-thread task manager (same as the browser fallback).
++    if (typeof globalThis.Worker === "undefined") {
++        singleThread = true;
++    }
+     
+     tm.singleThread = singleThread;
+     tm.initalPFree = tm.u32[0];   // Save the Pointer to free space.
+@@ -93,7 +101,7 @@
+         await tm.taskManager([{
+             cmd: "INIT",
+             init: MEM_SIZE,
+-            code: tm.code.slice()
++            code: tm.code instanceof WebAssembly.Module ? tm.code : tm.code.slice()
+         }]);
+         tm.concurrency  = 1;
+     } else {

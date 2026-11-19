@@ -1,0 +1,101 @@
+--- a/build/browser.esm.js
++++ b/build/browser.esm.js
+@@ -15549,8 +15549,9 @@
+     }
+ 
+     async function init(data) {
+-        const code = new Uint8Array(data.code);
+-        const wasmModule = await WebAssembly.compile(code);
++        // Workers patch: accept a pre-compiled Module as well as raw bytes.
++        const code = data.code instanceof WebAssembly.Module ? data.code : new Uint8Array(data.code);
++        const wasmModule = code instanceof WebAssembly.Module ? code : await WebAssembly.compile(code);
+         memory = new WebAssembly.Memory({initial:data.init, maximum: MAXMEM});
+ 
+         instance = await WebAssembly.instantiate(wasmModule, {
+@@ -15699,7 +15700,8 @@
+     tm.u8 = new Uint8Array(tm.memory.buffer);
+     tm.u32 = new Uint32Array(tm.memory.buffer);
+ 
+-    const wasmModule = await WebAssembly.compile(wasm.code);
++    // Workers patch: accept a pre-compiled Module (static wasm import).
++    const wasmModule = wasm.code instanceof WebAssembly.Module ? wasm.code : await WebAssembly.compile(wasm.code);
+ 
+     tm.instance = await WebAssembly.instantiate(wasmModule, {
+         env: {
+@@ -15730,7 +15732,7 @@
+         await tm.taskManager([{
+             cmd: "INIT",
+             init: MEM_SIZE,
+-            code: tm.code.slice()
++            code: tm.code instanceof WebAssembly.Module ? tm.code : tm.code.slice()
+         }]);
+         tm.concurrency  = 1;
+     } else {
+@@ -18031,30 +18033,44 @@
+ async function buildBn128(singleThread, plugins) {
+     if ((!singleThread) && (globalThis.curve_bn128)) return globalThis.curve_bn128;
+ 
+-    const moduleBuilder = new ModuleBuilder();
+-    moduleBuilder.setMemory(25);
+-    buildBn128$1(moduleBuilder);
+-
+-    if (plugins) plugins(moduleBuilder);
+-
++    // Workers patch: a prebuilt engine Module can be injected via
++    // globalThis.__BN128_WASM_MODULE__ = { module, meta }. The engine wasm is
++    // deterministic (ModuleBuilder output is byte-identical across runs and
++    // matches wasmcurves/build/bn128.wasm), so it can be statically imported
++    // instead of generated + compiled at runtime (compile is banned in Workers).
++    const prebuilt = globalThis.__BN128_WASM_MODULE__;
+     const bn128wasm = {};
+-
+-    bn128wasm.code = moduleBuilder.build();
+-    bn128wasm.pq = moduleBuilder.modules.f1m.pq;
+-    bn128wasm.pr = moduleBuilder.modules.frm.pq;
+-    bn128wasm.pG1gen = moduleBuilder.modules.bn128.pG1gen;
+-    bn128wasm.pG1zero = moduleBuilder.modules.bn128.pG1zero;
+-    bn128wasm.pG1b = moduleBuilder.modules.bn128.pG1b;
+-    bn128wasm.pG2gen = moduleBuilder.modules.bn128.pG2gen;
+-    bn128wasm.pG2zero = moduleBuilder.modules.bn128.pG2zero;
+-    bn128wasm.pG2b = moduleBuilder.modules.bn128.pG2b;
+-    bn128wasm.pOneT = moduleBuilder.modules.bn128.pOneT;
+-    bn128wasm.prePSize = moduleBuilder.modules.bn128.prePSize;
+-    bn128wasm.preQSize = moduleBuilder.modules.bn128.preQSize;
+-    bn128wasm.n8q = 32;
+-    bn128wasm.n8r = 32;
+-    bn128wasm.q = moduleBuilder.modules.bn128.q;
+-    bn128wasm.r = moduleBuilder.modules.bn128.r;
++    if (prebuilt && prebuilt.module instanceof WebAssembly.Module) {
++        bn128wasm.code = prebuilt.module;
++        Object.assign(bn128wasm, prebuilt.meta);
++        bn128wasm.n8q = 32;
++        bn128wasm.n8r = 32;
++        bn128wasm.q = "21888242871839275222246405745257275088696311157297823662689037894645226208583";
++        bn128wasm.r = "21888242871839275222246405745257275088548364400416034343698204186575808495617";
++    } else {
++        const moduleBuilder = new ModuleBuilder();
++        moduleBuilder.setMemory(25);
++        buildBn128$1(moduleBuilder);
++
++        if (plugins) plugins(moduleBuilder);
++
++        bn128wasm.code = moduleBuilder.build();
++        bn128wasm.pq = moduleBuilder.modules.f1m.pq;
++        bn128wasm.pr = moduleBuilder.modules.frm.pq;
++        bn128wasm.pG1gen = moduleBuilder.modules.bn128.pG1gen;
++        bn128wasm.pG1zero = moduleBuilder.modules.bn128.pG1zero;
++        bn128wasm.pG1b = moduleBuilder.modules.bn128.pG1b;
++        bn128wasm.pG2gen = moduleBuilder.modules.bn128.pG2gen;
++        bn128wasm.pG2zero = moduleBuilder.modules.bn128.pG2zero;
++        bn128wasm.pG2b = moduleBuilder.modules.bn128.pG2b;
++        bn128wasm.pOneT = moduleBuilder.modules.bn128.pOneT;
++        bn128wasm.prePSize = moduleBuilder.modules.bn128.prePSize;
++        bn128wasm.preQSize = moduleBuilder.modules.bn128.preQSize;
++        bn128wasm.n8q = 32;
++        bn128wasm.n8r = 32;
++        bn128wasm.q = moduleBuilder.modules.bn128.q;
++        bn128wasm.r = moduleBuilder.modules.bn128.r;
++    }
+ 
+     const params = {
+         name: "bn128",
